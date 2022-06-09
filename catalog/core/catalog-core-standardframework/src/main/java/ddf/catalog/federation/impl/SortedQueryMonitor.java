@@ -54,6 +54,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.time.StopWatch;
 import org.opengis.filter.expression.PropertyName;
 import org.opengis.filter.sort.SortBy;
 import org.opengis.filter.sort.SortOrder;
@@ -93,10 +94,15 @@ class SortedQueryMonitor implements Runnable {
     this.futures = futures;
     this.postQuery = postQuery;
     deadline = System.currentTimeMillis() + query.getTimeoutMillis();
+    LOGGER.error("hi");
   }
 
   @Override
   public void run() {
+    LOGGER.error("abcdefg");
+
+    StopWatch stopWatch = new StopWatch();
+    stopWatch.start();
     List<SortBy> sortBys = new ArrayList<>();
     SortBy sortBy = query.getSortBy();
     if (sortBy != null && sortBy.getPropertyName() != null) {
@@ -206,7 +212,12 @@ class SortedQueryMonitor implements Runnable {
         sourceResponse =
             executePostFederationQueryPluginsWithSourceError(queryRequest, sourceId, e);
       }
+      System.out.println(
+          "There are " + sourceResponse.getResults().size() + " results for sourceID " + sourceId);
+      LOGGER.warn(
+          "There are {} results for sourceID {}", sourceResponse.getResults().size(), sourceId);
       resultList.addAll(sourceResponse.getResults());
+
       long hits = sourceResponse.getHits();
       totalHits += hits;
       hitsPerSource.merge(sourceId, hits, (l1, l2) -> l1 + l2);
@@ -226,6 +237,15 @@ class SortedQueryMonitor implements Runnable {
 
     returnResults.setHits(totalHits);
     returnResults.addResults(sortedResults(resultList, resultComparator), true);
+    long end2 = System.currentTimeMillis();
+    stopWatch.stop();
+    System.out.println(
+        "SortedQueryMonitor Time in milliseconds: " + stopWatch.getTime(TimeUnit.MILLISECONDS));
+    LOGGER.warn(
+        "SortedQueryMonitor Time in milliseconds: " + stopWatch.getTime(TimeUnit.MILLISECONDS));
+
+    System.out.println("There are " + resultList.size() + " total result\n");
+    LOGGER.warn("There are " + resultList.size() + " total results");
   }
 
   private Set<ProcessingDetails> sourceProcessingDetailsToProcessingDetails(
